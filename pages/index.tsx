@@ -395,4 +395,322 @@ export default function Home() {
             <Logo />
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Billions Neon — Avatar Game</h1>
-              <p className="text-xs md:tex
+              <p className="text-xs md:text-sm text-white/70 -mt-1">
+                by <b>@traderibo123</b> • Build combos, catch valid items
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {screen === "play" && (
+              <button
+                onClick={() => {
+                  reset();
+                  setRunning(true);
+                }}
+                className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-sm font-semibold"
+              >
+                Restart
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Screens */}
+        {screen === "intro" && (
+          <IntroScreen
+            handle={handle}
+            setHandle={setHandle}
+            fetchAvatar={fetchAvatar}
+            onLocalFile={onLocalFile}
+            scale={scale}
+            setScale={setScale}
+            offX={offX}
+            setOffX={setOffX}
+            offY={offY}
+            setOffY={setOffY}
+            rotate={rotate}
+            setRotate={setRotate}
+            previewUrl={composedUrl || avatarUrl || "/default-avatar.png"}
+            onStart={startGame}
+          />
+        )}
+
+        {screen === "play" && (
+          <>
+            {/* HUD */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+              <HUD label="POWER" value={String(power)} />
+              <HUD label="Time" value={`${Math.ceil(timeLeft)}s`} />
+              <HUD label="Lives" value={"❤".repeat(lives) || "—"} />
+              <HUD label="Best" value={String(best)} />
+              <HUD label="Combo" value={`${combo} (${1 + Math.floor(combo / 5)}x)`} />
+            </div>
+
+            {/* PLAYFIELD */}
+            <div className="relative w-full aspect-[16/9] rounded-[28px] overflow-hidden border border-white/20 bg-white/5 shadow-[0_0_80px_#0ea5e955]">
+              {/* subtle grid */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-[.08]"
+                style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg,#fff 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+              />
+              {/* Player (avatar) */}
+              <div className="absolute -translate-x-1/2" style={{ left: `${x * 100}%`, bottom: `6%` }}>
+                {composedUrl ? (
+                  <div
+                    className="w-28 h-28 md:w-32 md:h-32 rounded-full border border-white/40 shadow-[0_10px_40px_rgba(255,255,255,.35)]"
+                    style={{ backgroundImage: `url(${composedUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+                  />
+                ) : (
+                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border border-white/40 bg-white/10 flex items-center justify-center text-4xl">🕶️</div>
+                )}
+                <div className="text-center text-[10px] text-white/60 mt-1">you</div>
+              </div>
+
+              {/* Drops */}
+              {dropsRef.current.map((d) => (
+                <Token key={d.id} d={d} />
+              ))}
+              {/* Floaties */}
+              {floatiesRef.current.map((f) => (
+                <div
+                  key={f.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 text-xs font-bold text-white drop-shadow"
+                  style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%`, opacity: Math.max(0, Math.min(1, f.life)) }}
+                >
+                  {f.text}
+                </div>
+              ))}
+              {/* Particles */}
+              {particlesRef.current.map((p) => (
+                <div
+                  key={p.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/80"
+                  style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, opacity: Math.max(0, Math.min(1, p.life)) }}
+                />
+              ))}
+
+              {/* Touch Controls */}
+              <div className="absolute inset-x-0 bottom-1 flex items-center justify-between px-2 md:hidden">
+                <button
+                  onTouchStart={() => {
+                    if (!running) return;
+                    keys.current.L = true;
+                    setTimeout(() => (keys.current.L = false), 60);
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20"
+                >
+                  ◀
+                </button>
+                <button
+                  onTouchStart={() => {
+                    if (!running) return;
+                    keys.current.R = true;
+                    setTimeout(() => (keys.current.R = false), 60);
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-white/10 border border-white/20"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {screen === "gameover" && (
+          <GameOverScreen power={power} best={best} onRestart={startGame} onShare={shareOnX} onBackIntro={() => setScreen("intro")} />
+        )}
+
+        <footer className="mt-4 text-xs text-white/60 text-center">
+          Fan-made visual demo • by <b>@traderibo123</b> • Tag <span className="font-semibold text-white">@billions_ntwk</span>.
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+// Screens
+function IntroScreen(props: {
+  handle: string;
+  setHandle: (v: string) => void;
+  fetchAvatar: () => void;
+  onLocalFile: (e: any) => void;
+  scale: number;
+  setScale: (n: number) => void;
+  offX: number;
+  setOffX: (n: number) => void;
+  offY: number;
+  setOffY: (n: number) => void;
+  rotate: number;
+  setRotate: (n: number) => void;
+  previewUrl: string;
+  onStart: () => void;
+}) {
+  const {
+    handle,
+    setHandle,
+    fetchAvatar,
+    onLocalFile,
+    scale,
+    setScale,
+    offX,
+    setOffX,
+    offY,
+    setOffY,
+    rotate,
+    setRotate,
+    previewUrl,
+    onStart,
+  } = props;
+
+  return (
+    <div className="rounded-[28px] border border-white/20 bg-white/5 p-4 shadow-[0_0_80px_#7c3aed55]">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="text-3xl md:text-4xl font-black tracking-tight">
+          Welcome to <span className="text-fuchsia-300 drop-shadow">Billions Neon</span>
+        </div>
+      </div>
+      <div className="text-xs text-white/70 mb-3">
+        by <b>@traderibo123</b>
+      </div>
+      <p className="text-sm text-white/70 mb-4">
+        Craft your hero: fetch your X avatar or upload one, then fit the <b>Billions glasses</b>. When ready, hit <b>Start</b>.
+      </p>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Left: preview */}
+        <div className="flex items-center gap-4">
+          <div
+            className="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border border-white/30 shadow-[0_10px_40px_rgba(255,255,255,.25)]"
+            style={{ backgroundImage: `url(${previewUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+          />
+        </div>
+
+        {/* Right: controls */}
+        <div className="grid gap-3">
+          <div className="grid md:grid-cols-3 gap-2 items-end">
+            <div className="md:col-span-2">
+              <label className="text-xs text-white/70">X Handle (without @)</label>
+              <input
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                placeholder="username"
+                className="w-full mt-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={fetchAvatar} className="px-3 py-2 rounded-2xl bg-white text-black font-semibold">
+                Load Avatar
+              </button>
+              <label className="px-3 py-2 rounded-2xl bg-white/10 border border-white/20 text-sm cursor-pointer">
+                Upload
+                <input type="file" accept="image/*" onChange={onLocalFile} className="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-3">
+            <Range label="Scale" value={scale} min={0.7} max={1.8} step={0.01} onChange={setScale} />
+            <Range label="Offset X" value={offX} min={-60} max={60} step={1} onChange={setOffX} />
+            <Range label="Offset Y" value={offY} min={-60} max={60} step={1} onChange={setOffY} />
+            <Range label="Rotate" value={rotate} min={-30} max={30} step={0.5} onChange={setRotate} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-center">
+        <button onClick={onStart} className="px-6 py-3 rounded-2xl bg-white text-black font-bold shadow hover:scale-[1.02] transition">
+          Start
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GameOverScreen(props: { power: number; best: number; onRestart: () => void; onShare: () => void; onBackIntro: () => void }) {
+  const { power, best, onRestart, onShare, onBackIntro } = props;
+  return (
+    <div className="rounded-[28px] border border-white/20 bg-white/5 p-6 shadow-[0_0_80px_#22c55e55] text-center">
+      <h2 className="text-3xl font-extrabold mb-1">Run Complete</h2>
+      <div className="text-xs text-white/70 mb-2">
+        by <b>@traderibo123</b>
+      </div>
+      <div className="text-sm text-white/80">Total POWER</div>
+      <div className="text-5xl font-black my-2">{power}</div>
+      <div className="text-xs text-white/60 mb-4">
+        Best: <b>{best}</b>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button onClick={onShare} className="px-4 py-2 rounded-2xl bg-white text-black font-semibold">
+          Share on X
+        </button>
+        <button onClick={onRestart} className="px-4 py-2 rounded-2xl bg-white/10 border border-white/20 font-semibold">
+          Play again
+        </button>
+        <button onClick={onBackIntro} className="px-4 py-2 rounded-2xl bg-white/10 border border-white/20 font-semibold">
+          Back to Intro
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Building blocks
+function Token({ d }: { d: Drop }) {
+  const grad = COLORS[d.type];
+  const label = LABELS[d.type];
+  const icon = ICONS[d.type];
+  return (
+    <div className="absolute -translate-x-1/2 -translate-y-1/2 animate-wobble" style={{ left: `${d.x * 100}%`, top: `${d.y * 100}%` }} title={label}>
+      <div
+        className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center shadow-[0_8px_30px_rgba(255,255,255,.18)] ring-2 ring-white/40 relative`}
+      >
+        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_18px_rgba(255,255,255,.35)]" />
+        <span className="text-lg md:text-xl drop-shadow">{icon}</span>
+      </div>
+      <div className="mt-1 text-[10px] text-center text-white/80 font-semibold tracking-wide">{label}</div>
+    </div>
+  );
+}
+function HUD({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/10 border border-white/20 shadow px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-white/60">{label}</div>
+      <div className="text-lg font-bold leading-none">{value}</div>
+    </div>
+  );
+}
+function Range({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+  return (
+    <label className="grid gap-1 text-xs text-white/70">
+      <span>
+        {label}: <b className="text-white">{typeof value === "number" ? value.toFixed(2) : value}</b>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat((e.target as HTMLInputElement).value))} className="appearance-none w-full h-2 rounded bg-white/10 accent-white" />
+    </label>
+  );
+}
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// Tiny style helpers
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    .kbd{background:#ffffff18;border:1px solid #fff3;padding:2px 6px;border-radius:6px;font-weight:600}
+    @keyframes slowfloat { from{transform:translateY(0)} to{ transform:translateY(40px)} }
+    .animate-slowfloat{ animation: slowfloat 8s ease-in-out infinite alternate; }
+    @keyframes slowfloat2 { from{transform:translate(-20px,0)} to{ transform:translate(0,20px)} }
+    .animate-slowfloat2{ animation: slowfloat2 10s ease-in-out infinite alternate; }
+    @keyframes wobble { 0%{ transform: translateY(0) rotate(0deg);} 50%{ transform: translateY(-4px) rotate(1deg);} 100%{ transform: translateY(0) rotate(0deg);} }
+    .animate-wobble{ animation: wobble 1.6s ease-in-out infinite; }
+  `;
+  document.head.appendChild(style);
+}
